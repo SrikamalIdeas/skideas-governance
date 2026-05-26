@@ -23,10 +23,15 @@
 - Structured observability (logs/metrics/traces/health checks).
 
 ## Delivery Workflow
-- Feature staging branch: `feature/<slug>/staging`
-- Task branch: `feature/<slug>/task-<task-id>-<short-name>`
-- Task PRs: task -> staging, approval required, delete merged task branch.
-- Final PR: staging -> main, approval required.
+
+### Branch Strategy
+- Feature integration branch: `feature/<slug>/staging`
+- Task branches: `feature/<slug>/task-<task-id>-<short-name>`
+
+### Review Gates
+- Task PRs: task → staging, approval required, delete merged task branch.
+- Final PR: staging → main, approval required.
+- No task implementation starts without explicit task-level brief approval.
 
 ## Quality Gates
 - No merge without passing build/tests and required review approvals.

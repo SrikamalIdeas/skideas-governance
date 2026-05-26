@@ -110,6 +110,21 @@ jobs:
           done
           [[ $missing -eq 0 ]] && echo "Orchestrator workflow markers OK." || exit 1
 
+      - name: Check bootstrap scripts exist
+        run: |
+          required_bootstrap=(
+            "bootstrap/init-project.sh"
+            "bootstrap/sync-governance.sh"
+          )
+          missing=0
+          for f in "${required_bootstrap[@]}"; do
+            if [[ ! -f "$f" ]]; then
+              echo "MISSING bootstrap script: $f"
+              missing=1
+            fi
+          done
+          [[ $missing -eq 0 ]] && echo "Bootstrap scripts present." || exit 1
+
       - name: Validate constitution template has required sections
         run: |
           tmpl=".specify/templates/constitution-template.md"

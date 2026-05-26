@@ -28,6 +28,15 @@
 - Task PRs: task -> staging, approval required, delete merged task branch.
 - Final PR: staging -> main, approval required.
 
+## Quality Gates
+- No merge without passing build/tests and required review approvals.
+- No direct task implementation on staging/main.
+- Required tests: integration tests per task scope and business flow tests per feature scope.
+- Minimum automated code coverage is 95%.
+- Pre-merge validation must run the full end-to-end business flow on staging before the final PR to main.
+- Post-merge validation must run the same business flow against the local Docker environment after main merge.
+- Architecture-impacting changes must update `docs/architecture/overview.md` and relevant ADRs.
+
 ## Governance
 - Constitution is policy source of truth.
 - Exceptions require explicit justification and reviewer approval.

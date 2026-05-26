@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read VERSION
+        id: version
+        run: |
+          version=$(cat VERSION)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version"
+
+      - name: Validate tag matches VERSION
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="v$(cat VERSION)"
+          if [[ "$tag" != "$version" ]]; then
+            echo "Tag ($tag) does not match VERSION file ($version). Aborting."
+            exit 1
+          fi
+          echo "Tag and VERSION match: $tag"
+
+      - name: Package bootstrap scripts
+        run: |
+          cp bootstrap/init-project.sh   init-project.sh
+          cp bootstrap/sync-governance.sh sync-governance.sh
+          chmod +x init-project.sh sync-governance.sh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "skideas-governance ${{ github.ref_name }}"
+          body: |
+            ## skideas-governance ${{ github.ref_name }}
+
+            Shared SDLC governance for all SrikamalIdeas projects.
+
+            ### What's included
+            - **15 Speckit agents** — orchestrator and all lifecycle phase agents
+            - **5 templates** — spec, plan, tasks, checklist, constitution
+            - **6 scripts** — preflight, setup, and feature creation helpers
+            - **Speckit git extension** — bash and PowerShell
+            - **Bootstrap scripts** — one-command project setup and version-pinned sync
+
+            ### Bootstrap a new project
+            ```bash
+            curl -fsSL https://github.com/SrikamalIdeas/skideas-governance/releases/download/${{ github.ref_name }}/init-project.sh | bash
+            ```
+
+            ### Upgrade an existing project
+            ```bash
+            curl -fsSL https://github.com/SrikamalIdeas/skideas-governance/releases/download/${{ github.ref_name }}/sync-governance.sh | bash -s -- ${{ github.ref_name }}
+            ```
+
+            ### Changelog
+            See [commits since last release](https://github.com/SrikamalIdeas/skideas-governance/commits/${{ github.ref_name }}).
+          files: |
+            init-project.sh
+            sync-governance.sh
+          draft: false
+          prerelease: false

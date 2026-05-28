@@ -81,7 +81,38 @@
 - For features that don't yet require dynamic filtering, implement the 4 abstract methods of `BaseRepositoryImpl` with empty/no-op stubs.
 - Document each stub with a `TODO(<feature-id>)` comment noting when real implementations are expected.
 
-## JSON Column Convention
+## Actor Pattern Standard
+
+### AP1. Pekko Actor Structure
+- Every Pekko actor must be a `public final class` with a private constructor.
+- Commands must be a `sealed interface Command permits ...` nested inside the actor class.
+- Each command must be a `record` implementing `Command` and carrying a `DiagnosticContext diagnosticContext` field for MDC propagation.
+- Provide a `public static Behavior<Command> create(...)` factory method — never instantiate actors directly.
+
+### AP2. Spring Bean Registration — Nested Config
+- Every actor class must register its own Spring bean via a nested `static @Configuration` class named `Config`:
+  ```java
+  @Configuration
+  public static class Config {
+      @Bean
+      public ActorRef<MyActor.Command> myActor(ActorSystem<Void> system) {
+          return system.systemActorOf(MyActor.create(...), "my-actor", Props.empty());
+      }
+  }
+  ```
+- No separate `*ActorConfig.java` file per actor — the actor owns its own Spring wiring.
+- `PekkoConfig` owns only the `ActorSystem<Void>` bean and `@PreDestroy` shutdown. It is **never** modified when adding new actors.
+
+### AP3. MDC Propagation
+- Every actor message handler must wrap its logic in `ActorMdcHelper.withMdc(cmd.diagnosticContext(), () -> { ... })`.
+- Return `Behaviors.same()` **after** (not inside) the `withMdc` call — `withMdc` takes a `Runnable` (void).
+
+### AP4. Actor Tests
+- Actor tests must use `ActorTestKit` (no Spring context).
+- Use `TestProbe<ReplyType>` to assert reply-to messages; use `probe.expectNoMessage(Duration)` to assert silence.
+- Annotate with `@BeforeAll` / `@AfterAll` to share a single `ActorTestKit` across tests in the same class.
+
+
 - JSONB columns for collections/maps must default to `'{}'`.
 - Corresponding Java fields must be annotated with a JSON-to-string converter (e.g. `@Convert(converter = JsonMapConverter.class)`).
 - Converters must be in `skideas-common-core` and reused across all projects — never duplicated.
@@ -101,6 +132,12 @@ Before raising any task PR, the AI must self-verify ALL items below:
 - [ ] Repository interface extends `BaseRepository<Entity, Long>` from `skideas-common-core` (single extends clause)
 - [ ] `*RepositoryImpl` extends `BaseRepositoryImpl<Entity, Long>` — no local duplicate
 - [ ] No local copy of any `skideas-common-core` type
+
+**Actor (Pekko)**
+- [ ] Actor is `final` with private constructor; commands are a `sealed interface` with `DiagnosticContext` field
+- [ ] Spring bean registered via nested `static @Configuration class Config` — no separate `*ActorConfig.java`
+- [ ] Every handler wrapped in `ActorMdcHelper.withMdc(...)`; `Behaviors.same()` returned after the call
+- [ ] Actor tests use `ActorTestKit` (no Spring context); `TestProbe` used for reply assertions
 
 **Service Architecture**
 - [ ] Service has `I<Name>Service` interface + `@Service @RequiredArgsConstructor` implementation

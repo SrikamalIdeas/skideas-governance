@@ -42,6 +42,79 @@
 - Post-merge validation must run the same business flow against the local Docker environment after main merge.
 - Architecture-impacting changes must update `docs/architecture/overview.md` and relevant ADRs.
 
+## Entity and Audit Standards
+
+### EA1. AuditableEntity
+- Every persistent entity **must** extend `AuditableEntity` from `skideas-common-core`.
+- Entities must NOT define their own `@PrePersist`/`@PreUpdate` lifecycle callbacks for audit fields — `AuditableEntity` handles them via JPA auditing.
+- Add `@EqualsAndHashCode(callSuper = false)` on every entity that extends `AuditableEntity`.
+
+### EA2. Audit Columns in Migrations
+- Every table in Flyway migrations must include all 5 audit columns:
+  ```sql
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by  VARCHAR(100) NOT NULL DEFAULT 'system',
+  updated_by  VARCHAR(100) NOT NULL DEFAULT 'system',
+  version     BIGINT       NOT NULL DEFAULT 0
+  ```
+- `version` is used for optimistic locking — never omit it.
+
+### EA3. JPA Auditing Configuration
+- The Spring Boot main application class must carry `@EnableJpaAuditing(auditorAwareRef = "auditorAware")`.
+- A `@Bean AuditorAware<String> auditorAware()` bean must be registered in a `@Configuration` class.
+- Any `@SpringBootApplication` used as a `@DataJpaTest` bootstrap must also declare `@EnableJpaAuditing` and provide its own `AuditorAware` bean returning a deterministic test identity (e.g. `"test-user"`).
+- A `@Bean JPAQueryFactory jpaQueryFactory(EntityManager em)` must be present in app config **and** in any `@DataJpaTest` bootstrap — required by `BaseRepositoryImpl` fragments.
+
+## Repository Pattern Standard
+
+### RP1. Use `BaseRepository` from skideas-common-core
+- Every domain repository interface must extend `BaseRepository<Entity, ID>` from `skideas-common-core` — **not** a local copy of the interface.
+- `BaseRepository` extends `JpaRepository`, so domain repos only need one extends clause: `extends BaseRepository<Entity, Long>`.
+- Every domain repository must have a corresponding `*RepositoryImpl` class that extends `BaseRepositoryImpl<Entity, ID>` from `skideas-common-core`.
+
+### RP2. No Local Copies
+- Do not copy `BaseRepository`, `BaseRepositoryImpl`, `FilterDetails`, `DynamicPageable`, `EntityMetaData`, `FilterColumnType`, `FilterOperationsEnum`, or `EmbedEnum` into any project.
+- These types are owned exclusively by `skideas-common-core`. All projects consume them as a Maven dependency.
+
+### RP3. Abstract Method Stubs
+- For features that don't yet require dynamic filtering, implement the 4 abstract methods of `BaseRepositoryImpl` with empty/no-op stubs.
+- Document each stub with a `TODO(<feature-id>)` comment noting when real implementations are expected.
+
+## JSON Column Convention
+- JSONB columns for collections/maps must default to `'{}'`.
+- Corresponding Java fields must be annotated with a JSON-to-string converter (e.g. `@Convert(converter = JsonMapConverter.class)`).
+- Converters must be in `skideas-common-core` and reused across all projects — never duplicated.
+
+## Pre-PR Standards Checklist
+
+Before raising any task PR, the AI must self-verify ALL items below:
+
+**Entity / Persistence**
+- [ ] Entity extends `AuditableEntity` from `skideas-common-core`
+- [ ] No `@PrePersist`/`@PreUpdate` for audit fields; `@EqualsAndHashCode(callSuper = false)` present
+- [ ] Flyway migration includes all 5 audit columns for every new table
+- [ ] `@EnableJpaAuditing` + `AuditorAware<String>` bean present in app config and in any `@DataJpaTest` bootstrap class
+- [ ] `JPAQueryFactory` bean registered in app config and in `@DataJpaTest` bootstrap (required by `BaseRepositoryImpl` fragments)
+
+**Repository / DAO**
+- [ ] Repository interface extends `BaseRepository<Entity, Long>` from `skideas-common-core` (single extends clause)
+- [ ] `*RepositoryImpl` extends `BaseRepositoryImpl<Entity, Long>` — no local duplicate
+- [ ] No local copy of any `skideas-common-core` type
+
+**Service Architecture**
+- [ ] Service has `I<Name>Service` interface + `@Service @RequiredArgsConstructor` implementation
+- [ ] All dependencies injected via constructor (no `@Autowired` field injection)
+
+**Code Quality**
+- [ ] No magic strings/numbers — constants or enums used
+- [ ] Sensitive data encrypted at rest; `@Convert` used for JSONB columns
+- [ ] Public API classes/methods have Javadoc
+
+**Tests**
+- [ ] Integration tests cover the happy path and key error paths for every public service method
+- [ ] Business flow test added/updated to cover the feature end-to-end
+
 ## Governance
 - Constitution is policy source of truth.
 - Exceptions require explicit justification and reviewer approval.

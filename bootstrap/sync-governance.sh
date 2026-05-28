@@ -13,6 +13,7 @@
 #   .specify/templates/
 #   .specify/scripts/
 #   .specify/extensions/
+#   .specify/workflows/
 #   .specify/extensions.yml
 #   .specify/integration.json
 #   .specify/init-options.json
@@ -117,6 +118,9 @@ ok "Scripts marked executable."
 info "Updating extensions..."
 overwrite_dir "$EXTRACTED_DIR/.specify/extensions" "$TARGET_DIR/.specify/extensions"
 find "$TARGET_DIR/.specify/extensions" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+
+info "Updating workflows..."
+overwrite_dir "$EXTRACTED_DIR/.specify/workflows" "$TARGET_DIR/.specify/workflows"
 
 overwrite_file "$EXTRACTED_DIR/.specify/extensions.yml"    "$TARGET_DIR/.specify/extensions.yml"
 overwrite_file "$EXTRACTED_DIR/.specify/integration.json"  "$TARGET_DIR/.specify/integration.json"

@@ -56,7 +56,7 @@ EXECUTE_COMMAND: <command>
 - Use a feature staging branch: `feature/<slug>/staging`
 - Use task branches: `feature/<slug>/task-<task-id>-<short-name>`
 - Every PR requires user approval before merge.
-- After task PR merge, delete the task branch.
+- After task PR merge, delete the task branch in both remote and local git.
 - After all tasks complete, raise final PR from `feature/<slug>/staging` to `main`.
 
 ## Common lifecycle (all case types)
@@ -80,7 +80,7 @@ EXECUTE_COMMAND: <command>
    - raise PR task branch -> staging
    - wait for user approval
    - merge to staging
-   - delete merged task branch
+   - delete merged task branch in remote and local
 12. After all tasks merge to staging, raise final integration PR:
    - branch: `feature/<slug>/staging`
    - target: `main`
@@ -144,7 +144,9 @@ For each logical task phase in `tasks.md` (in strict order):
    - Merge to staging via PR merge button (not direct merge)
    - Never skip approval, never merge without explicit approval
 
-8. After merge, delete merged task branch.
+8. After merge, delete merged task branch in both locations:
+   - remote: `git push origin --delete <task-branch>`
+   - local: `git branch -d <task-branch>`
 
 9. **Only then** create the next task-phase branch (e.g., task-phase-02) and repeat from step 2.
 
@@ -266,7 +268,9 @@ After all task-phases are merged to staging and before creating the final PR to 
 
 3. **Merge to main after approval**
    - Only merge after code review and test verification
-   - Delete staging branch after merge
+   - Delete staging branch after merge in both locations:
+     * remote: `git push origin --delete feature/<slug>/staging`
+     * local: `git branch -d feature/<slug>/staging`
    - Tag release if applicable
 4. **Run post-merge local Docker business-flow validation**
    - After merge to main, run the local Docker business-flow validation against the server.

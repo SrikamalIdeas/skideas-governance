@@ -11,6 +11,10 @@ branch_strategy:
   final_integration_target: "main"
   require_task_pr_approval: true
   delete_task_branch_after_merge: true
+  delete_task_branch_remote_after_merge: true
+  delete_task_branch_local_after_merge: true
+  delete_staging_branch_remote_after_merge: true
+  delete_staging_branch_local_after_merge: true
 
 # Commit message used by `git commit` during repository initialization
 init_commit_message: "[Spec Kit] Initial commit"

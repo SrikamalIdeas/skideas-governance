@@ -29,9 +29,14 @@
 - Task branches: `feature/<slug>/task-<task-id>-<short-name>`
 
 ### Review Gates
-- Task PRs: task → staging, approval required, delete merged task branch.
+- Task PRs: task → staging, approval required, delete merged task branch in remote and local.
 - Final PR: staging → main, approval required.
 - No task implementation starts without explicit task-level brief approval.
+
+### Post-Merge Branch Hygiene
+- Delete every merged branch in both locations:
+  - remote: `git push origin --delete <branch>`
+  - local: `git branch -d <branch>`
 
 ## Quality Gates
 - No merge without passing build/tests and required review approvals.

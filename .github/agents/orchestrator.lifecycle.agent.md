@@ -68,20 +68,29 @@ EXECUTE_COMMAND: <command>
 5. `EXECUTE_COMMAND: /speckit.plan`
 6. `EXECUTE_COMMAND: discuss post-merge business test cases and local Docker validation during design review`
 7. `EXECUTE_COMMAND: update docs/architecture/overview.md and docs/architecture/adr/* when plan changes architecture/data flow/security boundaries/deployment topology`
-8. `EXECUTE_COMMAND: /speckit.tasks`
-9. `EXECUTE_COMMAND: validate package placement against constitution before PR creation (services/local-clients/processors/dto/mappers + external-clients module)`
-10. Raise **Spec & Plan PR** for review (spec artifacts only):
+8. **MANDATORY PLAN VALIDATION — HANDOFF TO CLAUDE CODE** (do NOT proceed to tasks until complete):
+   ```
+   HANDOFF_TO_CLAUDE_CODE: Plan Validation — specs/<feature>/plan.md
+   → Switch to Claude Code terminal
+   → Say: "validate heysiaai plan at specs/<feature>/plan.md"
+   → Wait for Claude Code to return: APPROVED or list of issues
+   → If issues returned: fix plan.md, then re-run this handoff
+   → Only proceed to step 9 after Claude Code returns APPROVED
+   ```
+9. `EXECUTE_COMMAND: /speckit.tasks`
+10. `EXECUTE_COMMAND: validate package placement against constitution before PR creation (services/local-clients/processors/dto/mappers + external-clients module)`
+11. Raise **Spec & Plan PR** for review (spec artifacts only):
    - branch: `feature/<slug>/staging`
    - target: `main`
    - wait for user approval before implementation starts.
-11. After approval, implementation proceeds task-by-task:
+12. After approval, implementation proceeds task-by-task:
    - create task branch from staging
    - implement one task
    - raise PR task branch -> staging
    - wait for user approval
    - merge to staging
    - delete merged task branch in remote and local
-12. After all tasks merge to staging, raise final integration PR:
+13. After all tasks merge to staging, raise final integration PR:
    - branch: `feature/<slug>/staging`
    - target: `main`
    - wait for user approval.

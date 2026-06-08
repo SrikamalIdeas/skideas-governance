@@ -63,7 +63,17 @@ EXECUTE_COMMAND: <command>
 
 1. `EXECUTE_COMMAND: ./.specify/scripts/bash/preflight-constitution-sync.sh`
 2. `EXECUTE_COMMAND: /speckit.constitution`
-3. `EXECUTE_COMMAND: /speckit.specify <TITLE + CONTEXT>`
+3. **Spec Creation** (case-type dependent — mandatory, do NOT skip):
+   - **NEW_FEATURE** — MANDATORY SPEC HANDOFF TO CLAUDE CODE (do NOT run `/speckit.specify`):
+     ```
+     HANDOFF_TO_CLAUDE_CODE: Spec Design — specs/<feature>/spec.md
+     → Switch to Claude Code terminal
+     → Say: "heysiaai spec for <feature> — <brief summary of design decisions from this conversation>"
+     → Wait for Claude Code to write specs/<feature>/spec.md
+     → Return here and confirm "Claude Code completed spec"
+     → Only proceed to step 4 after spec.md exists
+     ```
+   - **ENHANCEMENT / BUG_FIX** — `EXECUTE_COMMAND: /speckit.specify <TITLE + CONTEXT>`
 4. `EXECUTE_COMMAND: /speckit.clarify`
 5. `EXECUTE_COMMAND: /speckit.plan`
 6. `EXECUTE_COMMAND: discuss post-merge business test cases and local Docker validation during design review`

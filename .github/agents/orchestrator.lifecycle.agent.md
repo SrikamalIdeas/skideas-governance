@@ -170,6 +170,14 @@ For each logical task phase in `tasks.md` (in strict order):
 - **No merge without package compliance.** Package layout must satisfy constitution/package standard.
 - If architecture changes, architecture docs and ADR must be updated in the same feature lifecycle.
 - If case type is invalid, stop and ask for a valid one.
+- **[CC]-tagged tasks are NOT implemented by Copilot.** When the current task carries a `[CC]` executor tag, do NOT write any code. Instead emit a handoff directive and block:
+  ```
+  HANDOFF_TO_CLAUDE_CODE: T### — <task description>
+  → Switch to the Claude Code terminal
+  → Say: "heysiaai task T### per specs/<feature>/tasks.md"
+  → Return here and confirm "Claude Code completed T###" to continue
+  ```
+  Never attempt to implement a `[CC]` task. Resume only after user confirms completion.
 
 ## Service Architecture Standard (Mandatory for backend-services)
 

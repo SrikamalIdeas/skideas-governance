@@ -8,23 +8,29 @@ description: "Compact task template for low-token, high-consistency execution"
 **Prerequisites**: `spec.md`, `plan.md`
 
 ## Format
-`- [ ] T### [P?] [US#?] Action with exact file path`
+`- [ ] T### [P?] [US#?] [COPILOT|CC] Action with exact file path`
+
+**Executor tags** (required on all implementation tasks):
+- `[COPILOT]` — single-module; mirrors an existing pattern (entity, DTO, service interface, controller)
+- `[CC]` — touches 2+ modules; integration test writing; cross-module wiring; complex debugging
+- Final phase tasks T-BFT, T903, T904, T906 are always `[CC]`
+- Pure setup tasks (folder creation, config edits) may omit the tag
 
 ## Phase 1: Setup
 - [ ] T001 Create/align feature folders and base files
 - [ ] T002 Add/update config needed for feature
 
 ## Phase 2: Foundation (blocking)
-- [ ] T003 Implement shared primitives needed by all stories
-- [ ] T004 Add core validations/error model/logging hooks
+- [ ] T003 [COPILOT] Implement shared primitives needed by all stories in [path]
+- [ ] T004 [COPILOT] Add core validations/error model/logging hooks in [path]
 
 ## Phase 3+: User Stories (repeat per story in priority order)
 
 ### US1 (P1)
-- [ ] T010 [US1] Add/adjust model(s) in [path]
-- [ ] T011 [US1] Add/adjust service logic in [path]
-- [ ] T012 [US1] Add/adjust API/UI entry in [path]
-- [ ] T013 [US1] Add task-level integration test(s) in [path]
+- [ ] T010 [US1] [COPILOT] Add/adjust model(s) in [path]
+- [ ] T011 [US1] [COPILOT] Add/adjust service logic in [path]
+- [ ] T012 [US1] [COPILOT] Add/adjust API/UI entry in [path]
+- [ ] T013 [US1] [CC] Add task-level integration test(s) in [path]
 
 ### US2 (P2)
 - [ ] T020 [US2] ...

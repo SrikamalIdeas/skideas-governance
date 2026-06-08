@@ -86,6 +86,31 @@
 - For features that don't yet require dynamic filtering, implement the 4 abstract methods of `BaseRepositoryImpl` with empty/no-op stubs.
 - Document each stub with a `TODO(<feature-id>)` comment noting when real implementations are expected.
 
+## Exception Hierarchy Standard
+
+### EH1. Project Base Exception Extends SkideasException
+- Every project must define a single base exception that extends `SkideasException` from `skideas-common-core`.
+- Naming convention: `<ProjectName>Exception` (e.g. `HeySiaAIException`).
+- All other project exceptions must extend from this project base — never extend `RuntimeException` or `Exception` directly.
+
+### EH2. No Duplicate Exception Class Names
+- Project exception class names must not shadow or duplicate names already in `skideas-common-core` (e.g. `ValidationException`, `ResourceNotFoundException`, `ExternalServiceException`).
+- If a project needs a domain-specific subtype, qualify the name clearly (e.g. `SiaValidationException`, `DomainValidationException`).
+
+### EH3. No Local Copies of Common-Core Exceptions
+- Do not re-implement or copy `SkideasException`, `ResourceNotFoundException`, `ExternalServiceException`, or `ValidationException` from `skideas-common-core` into any project module.
+- Use them directly as a dependency or extend them for project-specific subtypes.
+
+## Web Filter / MDC Standard
+
+### WF1. Generic MDC Filter Comes from Common-Core
+- When `skideas-common-core` publishes a generic `MdcWebFilter`, all projects must extend it rather than writing their own `OncePerRequestFilter` from scratch.
+- The project-specific filter may only add project-specific MDC fields (e.g. feature resolution, actor context snapshot) on top of the common base.
+
+### WF2. MDC Fields Are Always Cleared
+- Every filter that sets MDC fields must clear them in a `finally` block — no context leaks between requests.
+- `TraceIdProvider.clear()` must be called alongside `MDC.clear()`.
+
 ## Actor Pattern Standard
 
 ### AP1. Pekko Actor Structure
@@ -143,6 +168,15 @@ Before raising any task PR, the AI must self-verify ALL items below:
 - [ ] Spring bean registered via nested `static @Configuration class Config` — no separate `*ActorConfig.java`
 - [ ] Every handler wrapped in `ActorMdcHelper.withMdc(...)`; `Behaviors.same()` returned after the call
 - [ ] Actor tests use `ActorTestKit` (no Spring context); `TestProbe` used for reply assertions
+
+**Exception Hierarchy**
+- [ ] All new exceptions extend the project base exception (e.g. `HeySiaAIException`), not `RuntimeException` or `Exception` directly
+- [ ] No exception class name duplicates a class in `skideas-common-core`
+- [ ] No local copy of any `skideas-common-core` exception type
+
+**Web Filter / MDC**
+- [ ] Any new `OncePerRequestFilter` extends the common-core `MdcWebFilter` base (once available); no from-scratch MDC filters
+- [ ] All MDC fields cleared in `finally` block; `TraceIdProvider.clear()` called alongside `MDC.clear()`
 
 **Service Architecture**
 - [ ] Service has `I<Name>Service` interface + `@Service @RequiredArgsConstructor` implementation

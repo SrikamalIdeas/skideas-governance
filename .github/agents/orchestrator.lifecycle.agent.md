@@ -168,6 +168,7 @@ For each logical task phase in `tasks.md` (in strict order):
 - **After merge to main, run the same business flow against the local Docker environment** to validate the deployed server path.
 - **No merge without passing tests.** All CI gates are blocking gates.
 - **No merge without package compliance.** Package layout must satisfy constitution/package standard.
+- **No merge without exception hierarchy compliance.** All new exceptions must extend the project base exception (e.g. `HeySiaAIException`). New exceptions that extend `RuntimeException` or `Exception` directly will be rejected. Exception class names must not duplicate any class in `skideas-common-core`.
 - If architecture changes, architecture docs and ADR must be updated in the same feature lifecycle.
 - If case type is invalid, stop and ask for a valid one.
 - **[CC]-tagged tasks are NOT implemented by Copilot.** When the current task carries a `[CC]` executor tag, do NOT write any code. Instead emit a handoff directive and block:

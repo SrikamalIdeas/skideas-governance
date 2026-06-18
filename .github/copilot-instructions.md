@@ -40,6 +40,13 @@
 - Stateless-first scale model, timeout/retry/circuit-breaker for integrations.
 - Structured observability (logs/metrics/traces/health checks).
 
+### C6. Service Architecture Standards
+- All services follow `IServiceName` / `ServiceName` interface+implementation pattern.
+- **Business Rule Validator pattern**: when a service contains pure business rules (ownership checks, field allowlists, cross-field invariants) that are non-trivial or reusable across multiple entry points (REST + chat + actors), extract them into a `@Component` validator class named `<Domain>Validator`. No interface — validators are stateless utilities. Methods throw the project's base exception; callers never check a return value. No repository access inside validators.
+  - ✅ `ScheduleValidator.requireBlockOwnership(block, schedule)` — throws if block doesn't belong to schedule
+  - ✅ `ScheduleValidator.requireValidMergePatchFields(patch)` — throws if patch contains a non-allowlisted field
+  - ❌ Inline `if (!x.equals(y)) throw ...` scattered across multiple service methods when a validator would centralize it
+
 ## Delivery Workflow
 
 ### Branch Strategy
@@ -218,6 +225,7 @@ Before raising any task PR, self-verify ALL items below:
 **Service Architecture**
 - [ ] Service has `I<Name>Service` interface + `@Service @RequiredArgsConstructor` implementation
 - [ ] All dependencies injected via constructor (no `@Autowired` field injection)
+- [ ] Business rule validators: pure rule methods extracted to `@Component <Domain>Validator` (no interface, no repository access, throws not returns)
 
 **Code Quality**
 - [ ] No magic strings/numbers — constants or enums used
@@ -233,4 +241,4 @@ Before raising any task PR, self-verify ALL items below:
 - Exceptions require explicit justification and reviewer approval.
 - Amendments require version bump + rationale + date.
 
-**Version**: 1.5.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-06-14
+**Version**: 1.6.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-06-18

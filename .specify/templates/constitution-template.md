@@ -9,6 +9,125 @@
 ### C2. API Standards
 - Versioned REST (`/api/v1/...`), resource naming, explicit status/error model.
 - Contracts documented before release.
+- **IDs never in request bodies.** The resource being acted on is always identified by its URL. A PATCH or DELETE body must never contain an `id` field to identify the target — that is what the URL path variable is for. Example: `PATCH /schedules/{date}/blocks/{blockId}` — body contains only fields to change, never `blockId`.
+- **Parent IDs must NOT appear in child DTOs.** The parent is already in the URL — do not repeat it in the response body. Example: if blocks are accessed via `/users/me/lifestyles/{lifestyleId}/blocks/{blockId}`, then the block DTO must not contain `lifestyleId`.
+- **IDs in URLs, names in body.** Database-generated IDs go in URL paths (stable, never change). Human-readable labels are mutable and belong in the request/response body only.
+- DTOs live in the service module (`backend-services` or equivalent) — never in the common/foundation module.
+- **PATCH standard: RFC 7396 (JSON Merge Patch).** Send only the fields to change; absent fields are untouched; `null` clears a field. Content-Type: `application/merge-patch+json`. Multiple fields may be updated in one request. Do NOT implement RFC 6902 (operation arrays).
+
+#### Action Sub-Resource Policy
+When an endpoint performs a command/action on a resource (not pure CRUD create), use the industry-standard action sub-resource pattern (Stripe/GitHub style):
+
+- Pattern: `POST /api/v1/{resource}/{id}/{action}`
+- **Resource identifier in URL.** The ID or business key of the resource being acted on belongs in the URL path — never in the request body.
+- **Specific action verb as sub-resource.** Use a concrete action name, not a generic wrapper.
+- **Typed action DTO in body.** A DTO named after the action containing only the inputs the action needs beyond what is already in the URL. If there are no extra inputs, body may be omitted (`@RequestBody(required = false)`).
+- **Never use a generic `{ actionType, payload }` wrapper** — loses type safety, breaks OpenAPI discriminated union.
+- **Audit fields are automatic** — `AuditableEntity` + `AuditorAware` capture `createdBy`/`updatedBy`/timestamps on save; action endpoints need no special handling.
+
+```
+POST /schedules/{date}/generate    body: GenerateScheduleRequestDTO { lifestyleId }   ✅
+POST /schedules/actions            body: { actionType, payload }                       ❌
+POST /schedules/generate?date=...  body: { lifestyleId }                               ❌
+```
+
+#### Request Body Policy
+- **POST (resource creation or action/trigger):** always `@RequestBody` DTO — never `@RequestParam`, even for action endpoints with only 2 fields.
+- **PUT (full update):** same DTO as GET response.
+- **PATCH:** `Map<String, Object>` with `Content-Type: application/merge-patch+json` (RFC 7396) — no DTO.
+- **GET:** never a request body. Query parameters only (filter DSL + Pageable + named business key params).
+- **DELETE:** no request body.
+
+#### Exception Logging Policy
+- `GlobalExceptionHandler` (`@ControllerAdvice`) must handle at minimum: `ProjectBaseException` → `log.warn` (no stack trace); `Exception` → `log.error` with full stack trace.
+- Every error response body must include `traceId` from `MDC.get(LogFields.TRACE_ID)`.
+- Minimum `ErrorResponse` fields: `errorCode`, `message`, `traceId`.
+- Never swallow an exception silently in service code.
+
+#### MDC Feature Field Policy
+- `MdcRequestFilter.resolveFeature()` must be updated in the same PR as any new controller — every production path must resolve to a meaningful feature name, never `"unknown"`.
+- All error responses must echo `traceId` so callers can correlate to server logs.
+- Required MDC fields on every request: `traceId`, `userId` (hashed), `feature`.
+
+#### Collection Endpoint / Dynamic Filtering Policy
+
+All `GET` collection endpoints use the shared QueryDSL filter infrastructure from `skideas-common-core`. Two implementation sites: **repository** and **controller**.
+
+**Repository — implement the 4 abstract methods + `getCollections`:**
+
+```java
+// 1. Map API filter field name → QueryDSL Q-class path + column type
+@Override
+protected Map<String, EntityMetaData> getEntityMetaDataBySuppliedFilter() {
+    return Map.of(
+        "status",    new EntityMetaData("status",    "entity.status",    "Entity", FilterColumnType.STRING),
+        "createdAt", new EntityMetaData("createdAt", "entity.createdAt", "Entity", FilterColumnType.DATE_TIME)
+    );
+}
+
+// 2. Map API sort field name → QueryDSL alias
+@Override
+protected Map<String, String> getSortParametersByDomainName() {
+    return Map.of("createdAt", "entity.createdAt", "status", "entity.status");
+}
+
+// 3. Add joins when a filter spans a related entity; leave empty for single-entity queries
+@Override
+protected void applyFiltersBasedOnSearch(JPQLQuery<?> query, Set<String> domainsFromFilters) { }
+
+// 4. Whether the filter map already contains a PK-style scope
+@Override
+protected boolean hasPKFieldsExistsInSearch(Map<String, FilterDetails> filters) {
+    return filters.containsKey("id");
+}
+
+// 5. Select IDs with filters/pagination, then fetch full entities by ID
+@Override
+public Page<MyEntity> getCollections(Map<String, FilterDetails> filters, DynamicPageable pageable) {
+    QMyEntity q = QMyEntity.myEntity;
+    List<Long> ids = getIds(
+        fields -> jpaQueryFactory.select(fields).from(q), "myEntity.id", filters, pageable);
+    if (ids.isEmpty()) return mapPageableResponse(pageable, List.of());
+    List<MyEntity> results = jpaQueryFactory.selectFrom(q)
+        .where(q.id.in(ids))
+        .orderBy(updateSortWithDomainNames(pageable.getPageable().getSort()))
+        .fetch();
+    return mapPageableResponse(pageable, results);
+}
+```
+
+`columnAliasNameByEntityName` must exactly match the QueryDSL Q-class path. `FilterColumnType` must match the Java field type. `BETWEEN` uses `~` separator; `IN`/`NOT_IN` use `,`.  If dynamic filtering is not needed yet, return `Collections.emptyMap()` from methods 1–2 and leave 3–4 as no-ops with a `// TODO(f00x)` comment.
+
+**Controller — three-tier parameter model:**
+
+| Tier | What | How |
+|---|---|---|
+| **IDs** | Resource identifiers (parent scope) | `@PathVariable` → pk-filter |
+| **Business keys** | Well-known queryable fields | Named `@RequestParam` → pk-filter |
+| **Other filters** | Remaining fields from repository map | `?filters=field:op:value;field:op:value` DSL |
+
+No `ALLOWED_FILTER_FIELDS` or `ALLOWED_SORT_FIELDS` constants in the controller — the repository maps already enforce this; `buildPredicate()` throws for unknown fields.
+
+```java
+@GetMapping("/{parentId}/items")
+public ResponseEntity<Page<ItemDTO>> getItems(
+        @PathVariable Long parentId,                       // ID — URL scope
+        @RequestParam(required = false) String status,     // business key — named param
+        @RequestParam(required = false) String filters,    // other fields — DSL
+        @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+    List<String> pkFilters = new ArrayList<>();
+    pkFilters.add(buildPKFilter("parentId", parentId.toString()));
+    if (status != null) pkFilters.add(buildPKFilter("status", status));
+
+    Map<String, FilterDetails> filterDetails = buildFilterDetails(
+        filters, pkFilters.toArray(String[]::new));
+
+    return ResponseEntity.ok(itemService.getItems(filterDetails, DynamicPageable.of(pageable)));
+}
+```
+
+DSL rules: `field:op:value` separated by `;`. Operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `like`, `in`, `not_in`, `between`. `in`/`not_in` values comma-separated; `between` values tilde-separated (`val1~val2`). Unknown field → HTTP 400 (thrown by repository). Never accept a filter body DTO on GET.
 
 ### C3. Data Integrity
 - Default normalized OLTP design (3NF), explicit keys/constraints/indexes.

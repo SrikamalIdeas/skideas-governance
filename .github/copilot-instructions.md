@@ -12,6 +12,21 @@
 ### C2. API Standards
 - Versioned REST (`/api/v1/...`), resource naming, explicit status/error model.
 - Contracts documented before release.
+- **IDs never in request bodies.** The resource being acted on is always identified by its URL path variable. PATCH and DELETE bodies must never contain an `id` field to identify the target. Example: `PATCH /schedules/{date}/blocks/{blockId}` — body contains only fields to change, never `blockId`.
+- **Parent IDs must NOT appear in child DTOs.** The parent is already in the URL — do not repeat it in the response body. Example: if blocks are under `/users/me/lifestyles/{lifestyleId}/blocks/{blockId}`, the block DTO must not contain `lifestyleId`.
+- **IDs in URLs, names in body.** Database-generated IDs go in URL paths only. Human-readable labels belong in the request/response body.
+- DTOs live in the service module (e.g. `backend-services`) — **never** in the common/foundation module (e.g. `backend-common`).
+- **PATCH standard: RFC 7396 (JSON Merge Patch).** Send only the fields to change; absent fields are untouched; `null` clears a field. `Content-Type: application/merge-patch+json`. Multiple fields allowed per request. Do NOT use RFC 6902 (operation arrays).
+- **Request body rule:** POST always uses `@RequestBody` DTO — never `@RequestParam`, even for action/trigger endpoints with only 2 fields. PUT uses the same DTO as GET. PATCH uses `Map<String, Object>` (RFC 7396). GET never has a request body — query params only. DELETE has no body.
+- **Action sub-resource pattern (industry standard — Stripe/GitHub style).** When an endpoint performs a command on a resource (not pure CRUD create), use `POST /{resource}/{id}/{action}`. The resource identifier (ID or business key) goes in the URL path. The body is a typed DTO named after the action containing only the inputs that action needs beyond what is already in the URL. If there are no extra inputs, body may be omitted (`@RequestBody(required = false)`). Do NOT use a generic `{ actionType, payload }` wrapper — loses type safety, breaks OpenAPI. Audit fields captured automatically by `AuditableEntity` + `AuditorAware` on save; no special handling needed.
+  - ✅ `POST /schedules/{date}/generate` with `GenerateScheduleRequestDTO { lifestyleId }`
+  - ❌ `POST /schedules/actions` with `{ actionType: "GENERATE", payload: { ... } }`
+  - ❌ `POST /schedules/generate?date=2026-06-18` (business key belongs in path)
+- **Exception logging rule:** `GlobalExceptionHandler` must log every exception AND include `traceId` in the error response body. `HeySiaAIException` → `log.warn` (no stack trace). Unhandled `Exception` → `log.error` with full stack trace. `ErrorResponse` must have fields: `errorCode`, `message`, `traceId` (from `MDC.get(LogFields.TRACE_ID)`). Never swallow an exception silently.
+- **MDC feature field rule:** `MdcRequestFilter.resolveFeature()` must be updated in the same PR as any new controller. Every production path must resolve to a meaningful feature name — never `"unknown"`. All error responses must include `traceId` so callers can correlate to server logs.
+- **Collection endpoints — dynamic filter DSL:** All `GET` collection endpoints use the `skideas-common-core` QueryDSL filter infrastructure. Three-tier parameter model: (1) **IDs** → `@PathVariable` converted to pk-filters; (2) **business keys** → named `@RequestParam` (e.g. `?blockType=EXERCISE`) converted to pk-filters; (3) **remaining filterable fields** defined in the repository map → `@RequestParam(required = false) String filters` DSL (`field:op:value;field:op:value`). No `ALLOWED_FILTER_FIELDS` or `ALLOWED_SORT_FIELDS` constants in the controller — the repository's `getEntityMetaDataBySuppliedFilter()` and `getSortParametersByDomainName()` already enforce this; `buildPredicate()` throws HTTP 400 for unknown fields. Call `buildFilterDetails(filters, pkFilters...)` and pass to `service.getCollections(filterDetails, DynamicPageable.of(pageable))`.
+  - **Repository `*RepositoryImpl`**: implement 4 abstract methods — `getEntityMetaDataBySuppliedFilter()` (maps API field name → `EntityMetaData` with Q-class path + `FilterColumnType`), `getSortParametersByDomainName()` (maps sort field → Q-class alias), `applyFiltersBasedOnSearch()` (add joins for cross-entity filters), `hasPKFieldsExistsInSearch()`. Override `getCollections()` using `getIds()` for paginated ID selection then fetch full entities by ID. If filtering not needed yet, return empty maps and no-op stubs with `// TODO(f00x)`.
+  - Operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `like`, `in` (comma-separated values), `not_in`, `between` (tilde-separated: `val1~val2`). Never use a filter body DTO on GET.
 
 ### C3. Data Integrity
 - Default normalized OLTP design (3NF), explicit keys/constraints/indexes.
@@ -32,9 +47,17 @@
 - Task branches: `feature/<slug>/task-<task-id>-<short-name>`
 
 ### Review Gates
-- Task PRs: task → staging, approval required, delete merged task branch.
+- Task PRs: task → staging, approval required.
 - Final PR: staging → main, approval required.
 - No task implementation starts without explicit task-level brief approval.
+
+### Branch Deletion (mandatory after every task PR merge)
+After a task branch PR is approved and merged into staging, you MUST delete the branch from both remote and local before starting the next task:
+```bash
+git push origin --delete <branch-name>
+git branch -d <branch-name>
+```
+**This is not optional.** The next task branch must NOT be created until the previous one is deleted. Skipping deletion bypasses the sequential gate and will be rejected at review.
 
 ## Quality Gates
 - No merge without passing build/tests and required review approvals.
@@ -154,6 +177,10 @@
 
 Before raising any task PR, self-verify ALL items below:
 
+**Branch Hygiene (must complete AFTER each PR is merged, before starting next task)**
+- [ ] Merged task branch deleted from remote: `git push origin --delete <branch-name>`
+- [ ] Merged task branch deleted from local: `git branch -d <branch-name>`
+
 **Entity / Persistence**
 - [ ] Entity extends `AuditableEntity` from `skideas-common-core`
 - [ ] No `@PrePersist`/`@PreUpdate` for audit fields; `@EqualsAndHashCode(callSuper = false)` present
@@ -174,6 +201,20 @@ Before raising any task PR, self-verify ALL items below:
 - [ ] Every handler wrapped in `ActorMdcHelper.withMdc(...)`; `Behaviors.same()` returned after the call
 - [ ] Actor tests use `ActorTestKit` (no Spring context); `TestProbe` used for reply assertions
 
+**API / Request Body**
+- [ ] POST endpoints use `@RequestBody` DTO — no `@RequestParam` inputs on POST
+- [ ] GET endpoints have no request body — filters via `@RequestParam String filters` DSL only
+- [ ] PATCH endpoints accept `Map<String, Object>` with `Content-Type: application/merge-patch+json`
+
+**Exception Logging**
+- [ ] `GlobalExceptionHandler` logs known exceptions at `warn` and unknown at `error` with stack trace
+- [ ] `ErrorResponse` includes `traceId` from `MDC.get(LogFields.TRACE_ID)`
+- [ ] No silent catch blocks in service code
+
+**MDC / Observability**
+- [ ] `MdcRequestFilter.resolveFeature()` (or equivalent) updated for any new controller path
+- [ ] New feature path registered in same PR as new controller — no `"unknown"` in production
+
 **Service Architecture**
 - [ ] Service has `I<Name>Service` interface + `@Service @RequiredArgsConstructor` implementation
 - [ ] All dependencies injected via constructor (no `@Autowired` field injection)
@@ -192,4 +233,4 @@ Before raising any task PR, self-verify ALL items below:
 - Exceptions require explicit justification and reviewer approval.
 - Amendments require version bump + rationale + date.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-05-28
+**Version**: 1.5.0 | **Ratified**: 2026-05-28 | **Last Amended**: 2026-06-14

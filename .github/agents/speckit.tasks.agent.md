@@ -152,8 +152,8 @@ Every task MUST strictly follow this format:
    - Foundational phase: NO story label
    - User Story phases: MUST have story label
    - Polish phase: NO story label
-5. **[COPILOT|CC] executor tag**: REQUIRED on all implementation tasks
-   - `[COPILOT]` — single-module task that mirrors an existing pattern (entity, DTO, service interface, controller, config)
+5. **[OMP|CC] executor tag**: REQUIRED on all implementation tasks
+   - `[OMP]` — single-module task that mirrors an existing pattern (entity, DTO, service interface, controller, config)
    - `[CC]` — multi-module task (touches 2+ modules); integration test writing; cross-module wiring; complex debugging
    - Final phase tasks T-BFT, T903, T904, T906 are always `[CC]`
    - Pure setup tasks (folder creation, config edits with no implementation) may omit the tag
@@ -161,13 +161,13 @@ Every task MUST strictly follow this format:
 
 **Executor Classification Rules**:
 
-When generating tasks, apply the following routing logic to assign `[COPILOT]` or `[CC]`:
+When generating tasks, apply the following routing logic to assign `[OMP]` or `[CC]`:
 
 | Criteria | Tag |
 |---|---|
-| New file in a single module following an established pattern | `[COPILOT]` |
-| Entity, DTO, repository interface, simple service interface+impl | `[COPILOT]` |
-| Single controller method or config property | `[COPILOT]` |
+| New file in a single module following an established pattern | `[OMP]` |
+| Entity, DTO, repository interface, simple service interface+impl | `[OMP]` |
+| Single controller method or config property | `[OMP]` |
 | Task touches 2 or more modules | `[CC]` |
 | Integration test (Testcontainers, RestAssured, end-to-end) | `[CC]` |
 | Cross-module wiring or dependency injection setup | `[CC]` |
@@ -177,9 +177,9 @@ When generating tasks, apply the following routing logic to assign `[COPILOT]` o
 **Examples**:
 
 - ✅ CORRECT: `- [ ] T001 Create project structure per implementation plan`
-- ✅ CORRECT: `- [ ] T005 [P] [COPILOT] Implement authentication middleware in src/middleware/auth.py`
-- ✅ CORRECT: `- [ ] T012 [P] [US1] [COPILOT] Create User model in src/models/user.py`
-- ✅ CORRECT: `- [ ] T014 [US1] [COPILOT] Implement UserService in src/services/user_service.py`
+- ✅ CORRECT: `- [ ] T005 [P] [OMP] Implement authentication middleware in src/middleware/auth.py`
+- ✅ CORRECT: `- [ ] T012 [P] [US1] [OMP] Create User model in src/models/user.py`
+- ✅ CORRECT: `- [ ] T014 [US1] [OMP] Implement UserService in src/services/user_service.py`
 - ✅ CORRECT: `- [ ] T015 [US1] [CC] Write integration tests for UserService in src/test/.../UserServiceIT.java`
 - ❌ WRONG: `- [ ] Create User model` (missing ID, story label, and executor tag)
 - ❌ WRONG: `T001 [US1] Create model` (missing checkbox)

@@ -11,7 +11,7 @@ description: "Compact task template for low-token, high-consistency execution"
 `- [ ] T### [P?] [US#?] [OMP|CC] Action with exact file path`
 
 **Executor tags** (required on all implementation tasks):
-- `[OMP]` — single-module; mirrors an existing pattern (entity, DTO, service interface, controller)
+- `[PI]` — single-module; mirrors an existing pattern (entity, DTO, service interface, controller)
 - `[CC]` — touches 2+ modules; integration test writing; cross-module wiring; complex debugging
 - Final phase tasks T-BFT, T903, T904, T906 are always `[CC]`
 - Pure setup tasks (folder creation, config edits) may omit the tag
@@ -21,15 +21,15 @@ description: "Compact task template for low-token, high-consistency execution"
 - [ ] T002 Add/update config needed for feature
 
 ## Phase 2: Foundation (blocking)
-- [ ] T003 [OMP] Implement shared primitives needed by all stories in [path]
-- [ ] T004 [OMP] Add core validations/error model/logging hooks in [path]
+- [ ] T003 [PI] Implement shared primitives needed by all stories in [path]
+- [ ] T004 [PI] Add core validations/error model/logging hooks in [path]
 
 ## Phase 3+: User Stories (repeat per story in priority order)
 
 ### US1 (P1)
-- [ ] T010 [US1] [OMP] Add/adjust model(s) in [path]
-- [ ] T011 [US1] [OMP] Add/adjust service logic in [path]
-- [ ] T012 [US1] [OMP] Add/adjust API/UI entry in [path]
+- [ ] T010 [US1] [PI] Add/adjust model(s) in [path]
+- [ ] T011 [US1] [PI] Add/adjust service logic in [path]
+- [ ] T012 [US1] [PI] Add/adjust API/UI entry in [path]
 - [ ] T013 [US1] [CC] Add task-level integration test(s) in [path]
 
 ### US2 (P2)

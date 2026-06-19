@@ -190,7 +190,7 @@ For each logical task phase in `tasks.md` (in strict order):
 - **No merge without exception hierarchy compliance.** All new exceptions must extend the project base exception (e.g. `HeySiaAIException`). New exceptions that extend `RuntimeException` or `Exception` directly will be rejected. Exception class names must not duplicate any class in `skideas-common-core`.
 - If architecture changes, architecture docs and ADR must be updated in the same feature lifecycle.
 - If case type is invalid, stop and ask for a valid one.
-- **[CC]-tagged tasks are NOT implemented by OMP.** When the current task carries a `[CC]` executor tag, do NOT write any code. Instead emit a handoff directive and block:
+- **[CC]-tagged tasks are NOT implemented by Pi.** When the current task carries a `[CC]` executor tag, do NOT write any code. Instead emit a handoff directive and block:
   ```
   HANDOFF_TO_CLAUDE_CODE: T### — <task description>
   → Switch to the Claude Code terminal
